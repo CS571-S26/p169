@@ -34,3 +34,17 @@ Test on mobile.
 	- Manage tuning presets
 - src/components/AccountPanel.jsx
 	- Login/register/logout shell
+
+## Deploy to GitHub Pages
+
+This app is configured for project pages at /p169/.
+
+1. Push this project to GitHub.
+2. In repository settings, open Pages and set Source to GitHub Actions.
+3. Push to main and wait for the Deploy to GitHub Pages workflow to finish.
+
+Manual fallback:
+
+```bash
+npm run deploy
+```
