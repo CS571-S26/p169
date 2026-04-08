@@ -1,36 +1,28 @@
 # TunedUp
 
-WIP guitar tuner that uses web audio api and accounts for saved tunings.
+Simple guitar tuner app prototype.
 
-Majority AI at the moment, meant for visual direction and scaffolding.
+## What it has
 
-## NEED TO DO
+- Web Audio pitch detection (prototype)
+- Account state (local)
+- Saved custom tunings (local)
 
-Fix sensitivity with mic input -> doesn't hold a note so can't really tune anything.
-Does detect for a split second somewhat accurately.
+## Run
 
-- UI needs work.
-    - String selection for tuning should be radio buttons or scroll with list, maybe play audio of string?
-    - Start listening should swap to stop instead of 2 separate buttons.
-    - Login page too wide, should be top right dropdown or popup. Only account page for settings.
+```bash
+npm install
+npm run dev
+```
 
-Swap to supabase auth.
+## Build
 
-Switch to next.js + tailwind
+```bash
+npm run build
+```
 
-Test on mobile.
+## Notes
 
-## Current Structure
+- This is a starter-level scaffold.
+- Tune detection can still be improved.
 
-- src/contexts/AuthContext.jsx
-	- Local auth state and session persistence
-- src/contexts/TuningContext.jsx
-	- Built-in tunings + custom tuning storage per user
-- src/hooks/useTunerEngine.js
-	- Web Audio microphone capture and pitch detection
-- src/components/TunerPanel.jsx
-	- Live tuner UI
-- src/components/TuningLibraryPanel.jsx
-	- Manage tuning presets
-- src/components/AccountPanel.jsx
-	- Login/register/logout shell
