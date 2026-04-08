@@ -14,7 +14,7 @@ export function PrimaryNavbar() {
                 <Navbar.Collapse id="site-nav">
                     <Nav className="ms-auto">
                         <Nav.Link as={Link} href="/">
-                            Home
+                            Tuner
                         </Nav.Link>
                         <Nav.Link as={Link} href="/tunings">
                             Tunings

@@ -4,7 +4,7 @@ import { PrimaryNavbar } from '../components/PrimaryNavbar.jsx'
 
 export const metadata = {
     title: 'TunedUp',
-    description: 'Simple Next.js conversion',
+    description: 'Guitar tuning app built with Next.js and Tailwind CSS',
 }
 
 export default function RootLayout({ children }) {
