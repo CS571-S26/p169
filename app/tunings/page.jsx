@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, ButtonGroup, Form } from 'react-bootstrap'
 
 const STRINGS = [
@@ -53,16 +53,26 @@ function autoCorrelate(buffer, sampleRate) {
     return hz
 }
 
+function getRms(buffer) {
+    let rms = 0
+    for (let i = 0; i < buffer.length; i += 1) {
+        rms += buffer[i] * buffer[i]
+    }
+    return Math.sqrt(rms / buffer.length)
+}
+
 export default function TuningsPage() {
     const [targetIndex, setTargetIndex] = useState(0)
     const [isListening, setIsListening] = useState(false)
     const [detectedHz, setDetectedHz] = useState(null)
+    const [signalLevel, setSignalLevel] = useState(0)
     const [error, setError] = useState('')
 
     const contextRef = useRef(null)
     const streamRef = useRef(null)
     const analyserRef = useRef(null)
     const rafRef = useRef(null)
+    const silentFramesRef = useRef(0)
 
     const target = STRINGS[targetIndex]
 
@@ -99,6 +109,12 @@ export default function TuningsPage() {
         return cents > 0 ? 'too high' : 'too low'
     }, [cents])
 
+    const absCents = cents === null ? null : Math.abs(cents)
+    const closeness = absCents === null ? 0 : Math.max(0, 1 - absCents / 35)
+    const hue = Math.round(8 + closeness * 132)
+    const innerScale = 0.95 + signalLevel * 0.45
+    const outerScale = 1.05 + signalLevel * 0.6
+
     const stop = () => {
         if (rafRef.current) {
             cancelAnimationFrame(rafRef.current)
@@ -114,6 +130,7 @@ export default function TuningsPage() {
         }
         analyserRef.current = null
         setIsListening(false)
+        setSignalLevel(0)
     }
 
     const sample = () => {
@@ -125,8 +142,19 @@ export default function TuningsPage() {
 
         const buffer = new Float32Array(analyser.fftSize)
         analyser.getFloatTimeDomainData(buffer)
+        const rms = getRms(buffer)
+        setSignalLevel((prev) => prev * 0.75 + Math.min(rms * 11, 1) * 0.25)
+
         const hz = autoCorrelate(buffer, ctx.sampleRate)
-        setDetectedHz(hz)
+        if (hz) {
+            silentFramesRef.current = 0
+            setDetectedHz((prev) => (prev ? prev * 0.65 + hz * 0.35 : hz))
+        } else {
+            silentFramesRef.current += 1
+            if (silentFramesRef.current > 55) {
+                setDetectedHz(null)
+            }
+        }
 
         rafRef.current = requestAnimationFrame(sample)
     }
@@ -145,6 +173,7 @@ export default function TuningsPage() {
             const source = ctx.createMediaStreamSource(stream)
             const analyser = ctx.createAnalyser()
             analyser.fftSize = 2048
+            analyser.smoothingTimeConstant = 0.15
             source.connect(analyser)
 
             streamRef.current = stream
@@ -156,6 +185,8 @@ export default function TuningsPage() {
             setError('Could not use microphone')
         }
     }
+
+    useEffect(() => stop, [])
 
     return (
         <section className="rounded-4 border border-stone-300 bg-white p-4 shadow-sm grid gap-3">
@@ -177,6 +208,38 @@ export default function TuningsPage() {
             </div>
 
             <div className="grid gap-2 rounded-4 border border-stone-200 bg-stone-50 p-3">
+                <div className="d-flex justify-content-center py-2">
+                    <div
+                        style={{
+                            width: 156,
+                            height: 156,
+                            borderRadius: '999px',
+                            border: `3px solid hsl(${hue} 78% 43%)`,
+                            transform: `scale(${outerScale})`,
+                            transition: 'transform 120ms linear, border-color 160ms ease',
+                            display: 'grid',
+                            placeItems: 'center',
+                        }}
+                    >
+                        <div
+                            style={{
+                                width: 112,
+                                height: 112,
+                                borderRadius: '999px',
+                                background: `hsl(${hue} 78% 43%)`,
+                                color: 'white',
+                                display: 'grid',
+                                placeItems: 'center',
+                                fontWeight: 700,
+                                fontSize: '1.55rem',
+                                transform: `scale(${innerScale})`,
+                                transition: 'transform 90ms linear, background-color 160ms ease',
+                            }}
+                        >
+                            {heardString ? heardString.name : '--'}
+                        </div>
+                    </div>
+                </div>
                 <div>Target: {target.name} ({target.hz.toFixed(2)} Hz)</div>
                 <div>Detected: {detectedHz ? `${detectedHz.toFixed(2)} Hz` : '--'}</div>
                 <div>Heard string: {heardString ? heardString.name : '--'}</div>
