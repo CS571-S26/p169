@@ -1,87 +1,32 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Button, ButtonGroup, Form } from 'react-bootstrap'
-import { STRING_ORDER, getTuningStrings, loadSelectedNotes } from '../utils/tuningSettings.js'
-
-function centsOff(current, target) {
-    return 1200 * Math.log2(current / target)
-}
-
-function autoCorrelate(buffer, sampleRate) {
-    let rms = 0
-    for (let i = 0; i < buffer.length; i += 1) {
-        rms += buffer[i] * buffer[i]
-    }
-    rms = Math.sqrt(rms / buffer.length)
-    if (rms < 0.006) {
-        return null
-    }
-
-    const size = buffer.length
-    let best = -1
-    let bestCorr = 0
-    for (let offset = 8; offset < size / 2; offset += 1) {
-        let diff = 0
-        for (let i = 0; i < size - offset; i += 1) {
-            diff += Math.abs(buffer[i] - buffer[i + offset])
-        }
-        const corr = 1 - diff / (size - offset)
-        if (corr > bestCorr) {
-            bestCorr = corr
-            best = offset
-        }
-    }
-
-    if (best < 0 || bestCorr < 0.82) {
-        return null
-    }
-
-    const hz = sampleRate / best
-    if (!Number.isFinite(hz) || hz < 50 || hz > 1200) {
-        return null
-    }
-
-    return hz
-}
-
-function foldIntoGuitarRange(hz) {
-    if (!hz) {
-        return hz
-    }
-
-    let next = hz
-    while (next > 370) {
-        next /= 2
-    }
-    while (next < 70) {
-        next *= 2
-    }
-    return next
-}
-
-function getRms(buffer) {
-    let rms = 0
-    for (let i = 0; i < buffer.length; i += 1) {
-        rms += buffer[i] * buffer[i]
-    }
-    return Math.sqrt(rms / buffer.length)
-}
+import { getTuningStrings, loadSelectedNotes } from '../utils/tuningSettings.js'
+import { HeadstockDesign } from '../components/HeadstockDesign.jsx'
+import { StringSelectorPanel } from '../components/StringSelectorPanel.jsx'
+import { centsOff, detectPitch, foldIntoGuitarRange, getRms } from '../utils/pitchDetection.js'
 
 export default function HomePage() {
+    const LOCK_THRESHOLD_FRAMES = 18
+
     const [targetIndex, setTargetIndex] = useState(0)
     const [isListening, setIsListening] = useState(false)
     const [detectedHz, setDetectedHz] = useState(null)
     const [signalLevel, setSignalLevel] = useState(0)
     const [error, setError] = useState('')
+    const [isTuneLocked, setIsTuneLocked] = useState(false)
     const [selectedNotes, setSelectedNotes] = useState(() => loadSelectedNotes())
 
     const contextRef = useRef(null)
     const streamRef = useRef(null)
     const analyserRef = useRef(null)
+    const highpassRef = useRef(null)
+    const lowpassRef = useRef(null)
+    const bandpassRef = useRef(null)
     const rafRef = useRef(null)
     const silentFramesRef = useRef(0)
-    const holdFramesRef = useRef(0)
+    const prevHzRef = useRef(null)
+    const lockFramesRef = useRef(0)
 
     const tuningStrings = useMemo(() => getTuningStrings(selectedNotes), [selectedNotes])
     const target = tuningStrings[targetIndex]
@@ -124,20 +69,44 @@ export default function HomePage() {
 
     const tuneStatus = useMemo(() => {
         if (cents === null) {
-            return 'waiting'
+            return {
+                label: 'waiting',
+                tone: 'waiting',
+                range: 'Play a string to detect pitch',
+            }
         }
-        if (Math.abs(cents) <= 8) {
-            return 'in tune'
+
+        const abs = Math.abs(cents)
+        if (abs <= 8) {
+            return {
+                label: isTuneLocked ? 'in tune (locked)' : 'in tune',
+                tone: 'in-tune',
+                range: isTuneLocked ? 'Pitch lock engaged' : 'Hold steady to lock pitch',
+            }
         }
-        return cents > 0 ? 'too high' : 'too low'
-    }, [cents])
+
+        if (abs <= 20) {
+            return {
+                label: cents > 0 ? 'a little high' : 'a little low',
+                tone: 'near',
+                range: 'Near range: 8 to 20 cents off',
+            }
+        }
+
+        return {
+            label: cents > 0 ? 'too high' : 'too low',
+            tone: 'far',
+            range: 'Far range: more than 20 cents off',
+        }
+    }, [cents, isTuneLocked])
 
     const absCents = cents === null ? null : Math.abs(cents)
     const closeness = absCents === null ? 0 : Math.max(0, 1 - absCents / 90)
-    const hue = Math.round(0 + closeness * 135)
-    const innerScale = 0.95 + signalLevel * 0.45
-    const outerScale = 1.05 + signalLevel * 0.6
-    const markerOffset = cents === null ? 0 : Math.max(-34, Math.min(34, cents * 0.55))
+    const hue = 264
+    const saturation = Math.round(44 + closeness * 28)
+    const lightness = Math.round(36 + closeness * 22)
+    const tunerColor = `hsl(${hue} ${saturation}% ${lightness}%)`
+    const markerOffset = cents === null ? 0 : Math.max(-70, Math.min(70, cents * 0.6))
 
     const stop = () => {
         if (rafRef.current) {
@@ -153,7 +122,12 @@ export default function HomePage() {
             contextRef.current = null
         }
         analyserRef.current = null
+        highpassRef.current = null
+        lowpassRef.current = null
+        bandpassRef.current = null
+        lockFramesRef.current = 0
         setIsListening(false)
+        setIsTuneLocked(false)
         setSignalLevel(0)
     }
 
@@ -169,21 +143,44 @@ export default function HomePage() {
         const rms = getRms(buffer)
         setSignalLevel((prev) => prev * 0.82 + Math.min(rms * 8, 1) * 0.18)
 
-        const hzRaw = autoCorrelate(buffer, ctx.sampleRate)
+        const hzRaw = detectPitch(buffer, ctx.sampleRate)
         const hz = foldIntoGuitarRange(hzRaw)
+        let isInTuneNow = false
         if (hz) {
             silentFramesRef.current = 0
-            holdFramesRef.current = 180
-            setDetectedHz((prev) => (prev ? prev * 0.8 + hz * 0.2 : hz))
+            isInTuneNow = Math.abs(centsOff(hz, target.hz)) <= 8
+            // Only update detected note if it's significantly different (new note detected)
+            // Check if we have a previous note and if this is a different note
+            const prevHz = prevHzRef.current
+            if (prevHz === null) {
+                // First detection
+                prevHzRef.current = hz
+                setDetectedHz(hz)
+            } else {
+                // Check if the new note is significantly different (more than 20 cents)
+                const centsDiff = Math.abs(centsOff(hz, prevHz))
+                if (centsDiff > 20) {
+                    // New note detected
+                    prevHzRef.current = hz
+                    setDetectedHz(hz)
+                } else {
+                    // Same note, smooth the value
+                    setDetectedHz((prev) => (prev ? prev * 0.85 + hz * 0.15 : hz))
+                }
+            }
         } else {
             silentFramesRef.current += 1
-            if (holdFramesRef.current > 0) {
-                holdFramesRef.current -= 1
-            }
-            if (silentFramesRef.current > 180 && holdFramesRef.current === 0) {
-                setDetectedHz(null)
-            }
+            // Hold the last detected note indefinitely
         }
+
+        if (isInTuneNow) {
+            lockFramesRef.current = Math.min(LOCK_THRESHOLD_FRAMES, lockFramesRef.current + 1)
+        } else {
+            lockFramesRef.current = Math.max(0, lockFramesRef.current - 2)
+        }
+
+        const nextLockState = lockFramesRef.current >= LOCK_THRESHOLD_FRAMES
+        setIsTuneLocked((current) => (current === nextLockState ? current : nextLockState))
 
         rafRef.current = requestAnimationFrame(sample)
     }
@@ -200,14 +197,39 @@ export default function HomePage() {
 
             const ctx = new AudioContextClass()
             const source = ctx.createMediaStreamSource(stream)
+
+            // Filter chain to reduce environmental low-end rumble and high-end noise,
+            // then emphasize the selected string's fundamental neighborhood.
+            const highpass = ctx.createBiquadFilter()
+            highpass.type = 'highpass'
+            highpass.frequency.value = 65
+            highpass.Q.value = 0.7
+
+            const lowpass = ctx.createBiquadFilter()
+            lowpass.type = 'lowpass'
+            lowpass.frequency.value = 1200
+            lowpass.Q.value = 0.7
+
+            const bandpass = ctx.createBiquadFilter()
+            bandpass.type = 'bandpass'
+            bandpass.frequency.value = target.hz
+            bandpass.Q.value = 2.2
+
             const analyser = ctx.createAnalyser()
-            analyser.fftSize = 4096
-            analyser.smoothingTimeConstant = 0.3
-            source.connect(analyser)
+            analyser.fftSize = 8192
+            analyser.smoothingTimeConstant = 0.2
+
+            source.connect(highpass)
+            highpass.connect(lowpass)
+            lowpass.connect(bandpass)
+            bandpass.connect(analyser)
 
             streamRef.current = stream
             contextRef.current = ctx
             analyserRef.current = analyser
+            highpassRef.current = highpass
+            lowpassRef.current = lowpass
+            bandpassRef.current = bandpass
             setIsListening(true)
             sample()
         } catch {
@@ -215,107 +237,73 @@ export default function HomePage() {
         }
     }
 
+    useEffect(() => {
+        if (!isListening || !bandpassRef.current || !contextRef.current) {
+            return
+        }
+
+        bandpassRef.current.frequency.setTargetAtTime(target.hz, contextRef.current.currentTime, 0.02)
+    }, [isListening, target.hz])
+
     useEffect(() => stop, [])
 
     return (
-        <section className="rounded-4 border border-stone-300 bg-white p-4 shadow-sm grid gap-3">
-            <h1 className="text-2xl font-semibold">Tuner</h1>
-
-            <div>
-                <p className="mb-2 text-stone-600">Pick string</p>
-                <ButtonGroup className="flex flex-wrap gap-2">
-                    {tuningStrings.map((item, index) => (
-                        <Button
-                            key={item.stringName}
-                            variant={index === targetIndex ? 'dark' : 'outline-dark'}
-                            onClick={() => setTargetIndex(index)}
-                        >
-                            {item.note}
-                        </Button>
-                    ))}
-                </ButtonGroup>
-                <div className="mt-2 text-sm text-stone-500">
-                    {tuningStrings.map((item) => `${item.stringName} → ${item.note}`).join(' | ')}
+        <section className="main-panel tuner-panel rounded-4 border border-stone-300 p-4 shadow-sm grid gap-4">
+            <div className="d-flex flex-wrap align-items-end justify-content-between gap-3">
+                <div>
+                    <h1 className="text-2xl font-semibold mb-1">Tuner</h1>
+                    <p className="text-stone-600 mb-0">String buttons sit on the guitar headstock.</p>
                 </div>
+                <div className="tuner-status-badge">{isListening ? 'Listening' : 'Ready'}</div>
             </div>
 
-            <div className="grid gap-2 rounded-4 border border-stone-200 bg-stone-50 p-3">
-                <div className="d-flex justify-content-center py-2">
-                    <div
-                        style={{
-                            width: 156,
-                            height: 156,
-                            borderRadius: '999px',
-                            border: `3px solid hsl(${hue} 78% 43%)`,
-                            transform: `scale(${outerScale})`,
-                            transition: 'transform 120ms linear, border-color 160ms ease',
-                            display: 'grid',
-                            placeItems: 'center',
-                            position: 'relative',
-                        }}
-                    >
-                        <div
-                            style={{
-                                width: 112,
-                                height: 112,
-                                borderRadius: '999px',
-                                background: `hsl(${hue} 78% 43%)`,
-                                color: 'white',
-                                display: 'grid',
-                                placeItems: 'center',
-                                fontWeight: 700,
-                                fontSize: '1.55rem',
-                                transform: `scale(${innerScale})`,
-                                transition: 'transform 90ms linear, background-color 160ms ease',
-                                position: 'relative',
-                            }}
-                        >
-                            {heardString ? heardString.name : '--'}
-                            <div
-                                style={{
-                                    position: 'absolute',
-                                    top: '-14px',
-                                    left: '50%',
-                                    width: 20,
-                                    height: 20,
-                                    borderRadius: '999px',
-                                    background: 'white',
-                                    border: `2px solid hsl(${hue} 78% 43%)`,
-                                    transform: `translateX(calc(-50% + ${markerOffset}px))`,
-                                    transition: 'transform 120ms linear, border-color 160ms ease',
-                                }}
-                            />
+            <div className="tuner-scene">
+                <StringSelectorPanel
+                    tuningStrings={tuningStrings}
+                    targetIndex={targetIndex}
+                    setTargetIndex={setTargetIndex}
+                />
+
+                <HeadstockDesign
+                    tuningStrings={tuningStrings}
+                    targetIndex={targetIndex}
+                    setTargetIndex={setTargetIndex}
+                    isListening={isListening}
+                    start={start}
+                    stop={stop}
+                    heardString={heardString}
+                    tunerColor={tunerColor}
+                    markerOffset={markerOffset}
+                    isTuneLocked={isTuneLocked}
+                />
+
+                <div className="tuner-orbit-card tuner-orbit-bottom-left">
+                    <div className="d-flex flex-column align-items-center justify-content-center text-center">
+                        <div className="fw-semibold">Target</div>
+                        <div className="small">
+                            {target.stringName} ({target.note} - {target.hz.toFixed(2)} Hz)
                         </div>
+                        <div className="mt-2 fw-semibold">Detected</div>
+                        <div className="small">{detectedHz ? `${detectedHz.toFixed(2)} Hz` : '--'}</div>
                     </div>
                 </div>
-                <div>Target: {target.stringName} ({target.note} - {target.hz.toFixed(2)} Hz)</div>
-                <div>Detected: {detectedHz ? `${detectedHz.toFixed(2)} Hz` : '--'}</div>
-                <div>Heard string: {heardString ? `${heardString.stringName} (${heardString.note})` : '--'}</div>
-                <div>Status: {tuneStatus}</div>
-                <div>Offset: {cents === null ? '--' : `${cents.toFixed(1)} cents`}</div>
+
+                <div className="tuner-orbit-card tuner-orbit-center">
+                    <div className="d-flex flex-column align-items-center justify-content-center text-center">
+                        <div className="fw-semibold">Status</div>
+                        <div className={`status-pill status-pill-${tuneStatus.tone}`}>{tuneStatus.label}</div>
+                        <div className="small text-stone-500 mt-1">{tuneStatus.range}</div>
+                        <div className="mt-2 fw-semibold">Offset</div>
+                        <div className="small">{cents === null ? '--' : `${cents.toFixed(1)} cents`}</div>
+                    </div>
+                </div>
             </div>
 
-            <Form.Check
-                type="switch"
-                id="listen-switch"
-                label={isListening ? 'Listening' : 'Not listening'}
-                checked={isListening}
-                onChange={(event) => {
-                    if (event.target.checked) {
-                        start()
-                    } else {
-                        stop()
-                    }
-                }}
-            />
+            <div className="text-stone-500 small">
+                Heard string: {heardString ? `${heardString.stringName} (${heardString.note})` : '--'}
+            </div>
 
             {error ? <p className="text-danger mb-0">{error}</p> : null}
-
-            <div>
-                <Button variant="outline-secondary" onClick={stop}>
-                    Stop
-                </Button>
-            </div>
         </section>
     )
 }

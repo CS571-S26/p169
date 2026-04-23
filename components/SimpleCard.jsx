@@ -5,7 +5,7 @@ export function SimpleCard({ title, children }) {
         <Card className="border-stone-300 shadow-sm">
             <Card.Body>
                 <Card.Title>{title}</Card.Title>
-                <Card.Text className="text-stone-600 mb-0">{children}</Card.Text>
+                <div className="text-stone-600 mb-0">{children}</div>
             </Card.Body>
         </Card>
     )

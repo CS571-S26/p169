@@ -12,13 +12,13 @@ export default function TuningsPage() {
     }, [selectedNotes])
 
     return (
-        <section className="rounded-4 border border-stone-300 bg-white p-4 shadow-sm grid gap-3">
+        <section className="main-panel rounded-4 border border-stone-300 p-4 shadow-sm grid gap-3">
             <h1 className="text-2xl font-semibold">Tunings</h1>
             <p className="text-stone-600 mb-0">Choose the note you want each string to tune to.</p>
 
             <div className="grid gap-3">
                 {STRING_ORDER.map((stringName) => (
-                    <div key={stringName} className="grid gap-2 rounded-4 border border-stone-200 bg-stone-50 p-3">
+                    <div key={stringName} className="inner-panel grid gap-2 rounded-4 border border-stone-200 bg-stone-50 p-3">
                         <div className="fw-semibold">String {stringName}</div>
                         <Form.Select
                             value={selectedNotes[stringName]}
@@ -39,7 +39,7 @@ export default function TuningsPage() {
                 ))}
             </div>
 
-            <div className="grid gap-2 rounded-4 border border-stone-200 bg-stone-50 p-3">
+            <div className="inner-panel grid gap-2 rounded-4 border border-stone-200 bg-stone-50 p-3">
                 <div className="fw-semibold">Current setup</div>
                 {STRING_ORDER.map((stringName) => (
                     <div key={stringName}>
