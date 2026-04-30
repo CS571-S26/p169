@@ -120,6 +120,16 @@ button:hover {
     border-color: #a78bfa;
     color: #0f172a;
 }
+.btn-outline-light {
+    border-color: #d8dbe6;
+    color: #d8dbe6;
+}
+
+.btn-outline-light:hover {
+    background-color: #d8dbe6;
+    border-color: #d8dbe6;
+    color: #1f2127;
+}
 
 /* Focus-visible for keyboard users: visible outline/ring */
 button:focus-visible,
