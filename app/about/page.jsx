@@ -2,7 +2,7 @@
 
 import { SimpleCard } from '../../components/SimpleCard.jsx'
 
-const stackItems = ['Next.js App Router', 'React Bootstrap', 'Tailwind utility classes', 'LocalStorage for tuning state', 'Web Audio API pitch detection']
+const stackItems = ['Next.js App Router', 'React Bootstrap', 'Tailwind utility classes', 'LocalStorage for tuning state', 'Web Audio API pitch detection', 'Supabase for user authentication and preset storage']
 
 export default function AboutPage() {
     return (
