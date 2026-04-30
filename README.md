@@ -1,12 +1,19 @@
 # TunedUp
 
-Simple guitar tuner app prototype.
+A simple guitar tuner app built with Next.js, React Bootstrap, and the Web Audio API.
+
+## Features
+
+- Live tuning detection
+- Custom tuning controls
+- Supabase implemented presets and sign-in
 
 ## Stack
 
 - Next.js
-- Tailwind CSS
 - React Bootstrap
+- Tailwind CSS
+- Supabase
 
 ## Attribution
 
