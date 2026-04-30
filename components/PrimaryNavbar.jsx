@@ -38,7 +38,7 @@ export function PrimaryNavbar() {
                             About
                         </Nav.Link>
                         <Button
-                            variant={isSignedIn ? 'outline-light' : 'dark'}
+                            variant="dark"
                             className="site-nav-link site-nav-button"
                             onClick={handleAuthClick}
                         >
