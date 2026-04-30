@@ -31,6 +31,8 @@ export function HeadstockDesign({
                 <svg
                     className="tuner-headstock-svg"
                     viewBox="0 0 512 512"
+                    aria-hidden="true"
+                    focusable="false"
                 >
                     <defs>
                         <linearGradient id="headstockGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -76,6 +78,7 @@ export function HeadstockDesign({
                             style={{ top: slot.top, left: slot.left, transform: 'translate(-50%, -50%)' }}
                             onClick={() => setTargetIndex(index)}
                             aria-label={`${item.stringName} ${item.note}`}
+                            aria-pressed={isActive}
                         >
                             <span className="machine-head-note">{item.note}</span>
                             <span className="machine-head-label">{item.stringName}</span>
@@ -95,6 +98,7 @@ export function HeadstockDesign({
                         }
                     }}
                     className="px-4"
+                    aria-pressed={isListening}
                 >
                     {isListening ? 'Stop Listening' : 'Start Listening'}
                 </Button>

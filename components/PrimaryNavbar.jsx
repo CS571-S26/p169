@@ -20,9 +20,9 @@ export function PrimaryNavbar() {
     }
 
     return (
-        <Navbar expand="md" className="site-navbar shadow-sm">
+        <Navbar as="nav" role="navigation" expand="md" className="site-navbar shadow-sm">
             <div className="site-navbar-inner mx-auto w-full max-w-5xl px-4">
-                <Navbar.Brand as={Link} href="/" className="fw-bold navbar-brand-custom">
+                <Navbar.Brand as={Link} href="/" className="fw-bold navbar-brand-custom" aria-label="TunedUp home">
                     TunedUp
                 </Navbar.Brand>
                 <Navbar.Toggle aria-controls="site-nav" />

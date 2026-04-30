@@ -9,6 +9,31 @@ body {
     color: #2d3139;
 }
 
+/* Skip link: hidden visually but visible on keyboard focus */
+.skip-link {
+    position: absolute;
+    left: -9999px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+.skip-link:focus,
+.skip-link:active {
+    position: fixed;
+    left: 1rem;
+    top: 1rem;
+    width: auto;
+    height: auto;
+    padding: 0.5rem 0.75rem;
+    background: #1f2127;
+    color: #fff;
+    z-index: 9999;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
 html {
     background: #e9eaf1;
 }
@@ -96,6 +121,21 @@ button:hover {
     color: #0f172a;
 }
 
+/* Focus-visible for keyboard users: visible outline/ring */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 3px solid rgba(154, 134, 227, 0.9);
+    outline-offset: 2px;
+}
+
+/* Ensure buttons not stripped of focus styling visually for keyboard users */
+button:focus {
+    outline: none;
+}
+
 .btn-outline-secondary {
     border-color: #a6abbb;
     color: #4a5160;
@@ -156,7 +196,7 @@ button:hover {
 }
 
 .navbar-brand-custom {
-    color: #9a86e3 !important;
+    color: #7154d7 !important;
     font-size: 1.5rem;
 }
 
@@ -734,4 +774,17 @@ main {
 
 .text-danger {
     color: #fca5a5 !important;
+}
+
+/* Utility: visually hidden for screen-reader-only content */
+.sr-only {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
 }
