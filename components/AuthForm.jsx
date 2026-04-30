@@ -8,12 +8,13 @@ import { useAuthState } from './AuthStateContext.jsx'
 export function AuthForm({ mode }) {
     const isSignup = mode === 'signup'
     const router = useRouter()
-    const { signIn } = useAuthState()
+    const { signInWithPassword, signUpWithPassword, signInWithGitHub } = useAuthState()
     const [formData, setFormData] = useState({
         email: '',
         password: '',
         confirmPassword: '',
     })
+    const [isSubmitting, setIsSubmitting] = useState(false)
     const [feedback, setFeedback] = useState({
         variant: 'info',
         message: isSignup
@@ -26,7 +27,7 @@ export function AuthForm({ mode }) {
         setFormData((current) => ({ ...current, [field]: value }))
     }
 
-    const handleSubmit = (event) => {
+    const handleSubmit = async (event) => {
         event.preventDefault()
 
         if (isSignup && formData.password !== formData.confirmPassword) {
@@ -34,19 +35,62 @@ export function AuthForm({ mode }) {
             return
         }
 
+        setIsSubmitting(true)
+
+        if (isSignup) {
+            const { data, error } = await signUpWithPassword({
+                email: formData.email,
+                password: formData.password,
+            })
+
+            if (error) {
+                setFeedback({ variant: 'danger', message: error.message })
+                setIsSubmitting(false)
+                return
+            }
+
+            if (data.session) {
+                setFeedback({
+                    variant: 'success',
+                    message: 'Account created and signed in. Your presets will sync across devices.',
+                })
+                router.push('/')
+                return
+            }
+
+            setFeedback({
+                variant: 'success',
+                message: 'Account created. Check your email to confirm your account, then sign in.',
+            })
+            setIsSubmitting(false)
+            return
+        }
+
+        const { error } = await signInWithPassword({
+            email: formData.email,
+            password: formData.password,
+        })
+
+        if (error) {
+            setFeedback({ variant: 'danger', message: error.message })
+            setIsSubmitting(false)
+            return
+        }
+
         setFeedback({
             variant: 'success',
-            message: isSignup
-                ? 'Account created successfully. Your custom tuning presets will sync across devices.'
-                : 'Signed in successfully. Your custom tuning presets are available across devices.',
+            message: 'Signed in successfully. Your custom tuning presets are available across devices.',
         })
-
-        signIn({
-            displayName: formData.email.split('@')[0],
-            email: formData.email,
-        })
-
         router.push('/')
+    }
+
+    const handleGitHub = async () => {
+        setIsSubmitting(true)
+        const { error } = await signInWithGitHub()
+        if (error) {
+            setFeedback({ variant: 'danger', message: error.message })
+            setIsSubmitting(false)
+        }
     }
 
     return (
@@ -64,6 +108,10 @@ export function AuthForm({ mode }) {
                 <Alert variant={feedback.variant} className="mb-0">
                     {feedback.message}
                 </Alert>
+
+                <Button type="button" variant="outline-dark" onClick={handleGitHub} disabled={isSubmitting}>
+                    Continue with GitHub
+                </Button>
 
                 <Form onSubmit={handleSubmit} className="grid gap-3">
                     <Form.Group controlId="email">
@@ -104,7 +152,7 @@ export function AuthForm({ mode }) {
                         </Form.Group>
                     ) : null}
 
-                    <Button type="submit" variant="dark">
+                    <Button type="submit" variant="dark" disabled={isSubmitting}>
                         {isSignup ? 'Create Account' : 'Sign In'}
                     </Button>
                 </Form>

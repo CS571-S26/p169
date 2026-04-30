@@ -1,13 +1,30 @@
 export const STRING_ORDER = ['E2', 'A2', 'D3', 'G3', 'B3', 'E4']
 
-export const STRING_OPTIONS = {
-    E2: ['E2', 'F2', 'F#2', 'G2', 'G#2', 'A2'],
-    A2: ['A2', 'A#2', 'B2', 'C3', 'C#3', 'D3'],
-    D3: ['D3', 'D#3', 'E3', 'F3', 'F#3', 'G3'],
-    G3: ['G3', 'G#3', 'A3', 'A#3', 'B3', 'C4'],
-    B3: ['B3', 'C4', 'C#4', 'D4', 'D#4', 'E4'],
-    E4: ['E4', 'F4', 'F#4', 'G4', 'G#4', 'A4'],
+const CHROMATIC_NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+
+function midiToNote(midi) {
+    const noteName = CHROMATIC_NOTES[midi % 12]
+    const octave = Math.floor(midi / 12) - 1
+    return `${noteName}${octave}`
 }
+
+const STRING_NOTE_RANGES = {
+    E2: [38, 43],
+    A2: [43, 48],
+    D3: [48, 53],
+    G3: [53, 57],
+    B3: [57, 62],
+    E4: [62, 67],
+}
+
+export const STRING_OPTIONS = Object.fromEntries(
+    STRING_ORDER.map((stringName) => [
+        stringName,
+        Array.from({ length: STRING_NOTE_RANGES[stringName][1] - STRING_NOTE_RANGES[stringName][0] + 1 }, (_, index) =>
+            midiToNote(STRING_NOTE_RANGES[stringName][0] + index)
+        ),
+    ])
+)
 
 export const DEFAULT_SELECTED_NOTES = {
     E2: 'E2',

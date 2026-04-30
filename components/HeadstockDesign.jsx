@@ -29,17 +29,8 @@ export function HeadstockDesign({
             <div className="tuner-headstock">
                 {/* Guitar headstock SVG from game-icons.net (CC BY 3.0) */}
                 <svg
+                    className="tuner-headstock-svg"
                     viewBox="0 0 512 512"
-                    style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        width: '100%',
-                        height: '100%',
-                        zIndex: 0,
-                        pointerEvents: 'none',
-                    }}
                 >
                     <defs>
                         <linearGradient id="headstockGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -55,52 +46,17 @@ export function HeadstockDesign({
                     />
                 </svg>
 
-                <div
-                    style={{
-                        position: 'absolute',
-                        left: '50%',
-                        top: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        width: 168,
-                        height: 168,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 2,
-                    }}
-                >
+                <div className="tuner-headstock-center">
                     <div className={`tuner-lock-ring ${isTuneLocked ? 'is-locked' : ''}`} />
 
-                    <div
-                        style={{
-                            position: 'absolute',
-                            width: 168,
-                            height: 168,
-                            borderRadius: '50%',
-                            border: '3px solid rgba(154, 134, 227, 0.5)',
-                            backgroundColor: 'rgba(248, 248, 251, 0.72)',
-                            zIndex: 1,
-                        }}
-                    />
+                    <div className="tuner-headstock-core-shell" />
 
                     <div
                         className={`tuner-core ${isTuneLocked ? 'is-locked' : ''}`}
                         style={{
-                            position: 'absolute',
-                            width: 124,
-                            height: 124,
-                            borderRadius: '50%',
-                            border: `3px solid ${tunerColor}`,
+                            borderColor: tunerColor,
                             backgroundColor: tunerColor,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '1.45rem',
-                            fontWeight: 700,
-                            color: '#ffffff',
                             transform: `translateX(${markerOffset}px)`,
-                            transition: 'transform 120ms linear, background-color 160ms ease, border-color 160ms ease',
-                            zIndex: 2,
                         }}
                     >
                         {heardString ? heardString.name : '--'}

@@ -2,7 +2,7 @@
 
 import { SimpleCard } from '../../components/SimpleCard.jsx'
 
-const stackItems = ['Next.js App Router', 'React Bootstrap', 'Tailwind utility classes', 'LocalStorage for demo state', 'Web Audio API pitch detection']
+const stackItems = ['Next.js App Router', 'React Bootstrap', 'Tailwind utility classes', 'LocalStorage for tuning state', 'Web Audio API pitch detection']
 
 export default function AboutPage() {
     return (
@@ -25,22 +25,22 @@ export default function AboutPage() {
             <SimpleCard title="Quick Guide for Non-Guitar Users">
                 <ul className="about-stack-list mb-0">
                     <li>
-                        <strong>Standard tuning (E A D G B E):</strong> The usual pitch setup for guitar strings from lowest to highest.
+                        <strong>Standard tuning (E A D G B E):</strong> The usual pitch setup for guitar strings, from the lowest string to the highest.
                     </li>
                     <li>
                         <strong>Hz (hertz):</strong> Frequency, or how fast a note vibrates each second. Higher Hz means a higher pitch.
                     </li>
                     <li>
-                        <strong>Cents:</strong> A tiny pitch unit. 100 cents = 1 semitone (one piano key step). 0 cents means perfectly in tune.
+                        <strong>Cents:</strong> A tiny pitch unit. 100 cents equals 1 semitone, and 0 cents means the note is right on target.
                     </li>
                     <li>
-                        <strong>Offset:</strong> The difference from the target note measured in cents. Negative offset means flat (low), positive offset means sharp (high).
+                        <strong>Offset:</strong> The difference from the target note measured in cents. Negative means flat, positive means sharp.
                     </li>
                     <li>
                         <strong>Too low / too high:</strong> The detected note is below or above the target note.
                     </li>
                     <li>
-                        <strong>Pitch lock:</strong> The tuner only shows a lock after the note stays stable and in tune briefly.
+                        <strong>Pitch lock:</strong> The tuner only shows a lock after the note stays stable and in tune for a moment.
                     </li>
                 </ul>
             </SimpleCard>

@@ -9,6 +9,16 @@ export function PrimaryNavbar() {
     const router = useRouter()
     const { authUser, isSignedIn, signOut } = useAuthState()
 
+    const handleAuthClick = async () => {
+        if (isSignedIn) {
+            await signOut()
+            router.push('/')
+            return
+        }
+
+        router.push('/signin')
+    }
+
     return (
         <Navbar expand="md" className="site-navbar shadow-sm">
             <div className="site-navbar-inner mx-auto w-full max-w-5xl px-4">
@@ -30,14 +40,7 @@ export function PrimaryNavbar() {
                         <Button
                             variant={isSignedIn ? 'outline-light' : 'dark'}
                             className="site-nav-link site-nav-button"
-                            onClick={() => {
-                                if (isSignedIn) {
-                                    signOut()
-                                    router.push('/')
-                                } else {
-                                    router.push('/signin')
-                                }
-                            }}
+                            onClick={handleAuthClick}
                         >
                             {isSignedIn ? `Sign Out${authUser?.displayName ? ` · ${authUser.displayName}` : ''}` : 'Sign In'}
                         </Button>

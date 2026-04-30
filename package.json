@@ -12,6 +12,7 @@
         "deploy": "gh-pages -d out"
     },
     "dependencies": {
+        "@supabase/supabase-js": "^2.105.1",
         "bootstrap": "^5.3.8",
         "next": "^16.2.2",
         "react": "^19.2.5",

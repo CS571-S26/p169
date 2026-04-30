@@ -1,38 +1,75 @@
 'use client'
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { clearAuthUser, loadAuthUser, saveAuthUser } from '../utils/authState.js'
+import { supabase } from '../utils/supabaseClient.js'
 
 const AuthStateContext = createContext(null)
 
 export function AuthStateProvider({ children }) {
-    const [authUser, setAuthUser] = useState(() => loadAuthUser())
+    const [session, setSession] = useState(null)
+    const [isLoading, setIsLoading] = useState(true)
 
     useEffect(() => {
-        const syncAuthState = () => {
-            setAuthUser(loadAuthUser())
-        }
+        let isMounted = true
 
-        window.addEventListener('storage', syncAuthState)
-        window.addEventListener('auth-state-updated', syncAuthState)
+        supabase.auth.getSession().then(({ data }) => {
+            if (isMounted) {
+                setSession(data.session ?? null)
+                setIsLoading(false)
+            }
+        })
+
+        const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+            setSession(nextSession ?? null)
+            setIsLoading(false)
+        })
+
         return () => {
-            window.removeEventListener('storage', syncAuthState)
-            window.removeEventListener('auth-state-updated', syncAuthState)
+            isMounted = false
+            authListener.subscription.unsubscribe()
         }
     }, [])
+
+    const authUser = useMemo(() => {
+        const user = session?.user
+        if (!user) {
+            return null
+        }
+
+        const metadataName = user.user_metadata?.full_name || user.user_metadata?.name || user.user_metadata?.preferred_username
+        return {
+            id: user.id,
+            email: user.email,
+            displayName: metadataName || user.email?.split('@')[0] || 'User',
+        }
+    }, [session])
 
     const value = useMemo(() => ({
         authUser,
         isSignedIn: Boolean(authUser),
-        signIn: (user) => {
-            saveAuthUser(user)
-            setAuthUser(user)
+        isLoading,
+        signInWithPassword: async ({ email, password }) => {
+            const { error } = await supabase.auth.signInWithPassword({ email, password })
+            return { error }
         },
-        signOut: () => {
-            clearAuthUser()
-            setAuthUser(null)
+        signUpWithPassword: async ({ email, password }) => {
+            const { data, error } = await supabase.auth.signUp({ email, password })
+            return { data, error }
         },
-    }), [authUser])
+        signInWithGitHub: async () => {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'github',
+                options: {
+                    redirectTo: `${window.location.origin}/auth/callback`,
+                },
+            })
+            return { error }
+        },
+        signOut: async () => {
+            const { error } = await supabase.auth.signOut()
+            return { error }
+        },
+    }), [authUser, isLoading])
 
     return <AuthStateContext.Provider value={value}>{children}</AuthStateContext.Provider>
 }
